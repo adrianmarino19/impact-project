@@ -1,0 +1,38 @@
+credentials:
+  usernames:
+    josezaballa:
+      email: joseluis.zaballa@student.ie.edu
+      name: Jose Luis
+      password: $2b$12$yaSP2a3bVEzfgdeoHR1dFe/x5y45p0aXBpr3ykgUp0KVU0a3254c6 # Capstone2023!
+    frbarca:
+      email: frbarca@student.ie.edu
+      name: Federico
+      password: $2b$12$yaSP2a3bVEzfgdeoHR1dFe/x5y45p0aXBpr3ykgUp0KVU0a3254c6 # Capstone2023!
+    sebvie:
+      email: sebastianviehhofer@student.ie.edu
+      name: Sebastian
+      password: $2b$12$yaSP2a3bVEzfgdeoHR1dFe/x5y45p0aXBpr3ykgUp0KVU0a3254c6 # Capstone2023!
+    adrimarino:
+      email: adrianmarino@student.ie.edu
+      name: Adrian
+      password: $2b$12$yaSP2a3bVEzfgdeoHR1dFe/x5y45p0aXBpr3ykgUp0KVU0a3254c6 # Capstone2023!
+    edgardo:
+      email: edgardo.alvarez@student.ie.edu
+      name: Edgardo
+      password: $2b$12$yaSP2a3bVEzfgdeoHR1dFe/x5y45p0aXBpr3ykgUp0KVU0a3254c6 # Capstone2023!
+    gustavomartin:
+      email: gustavom@faculty.ie.edu
+      name: Gustavo
+      password: $2b$12$yaSP2a3bVEzfgdeoHR1dFe/x5y45p0aXBpr3ykgUp0KVU0a3254c6 # Capstone2023!
+    oscar:
+      email: gustavom@faculty.ie.edu
+      name: Oscar
+      password: $2b$12$yaSP2a3bVEzfgdeoHR1dFe/x5y45p0aXBpr3ykgUp0KVU0a3254c6 # Capstone2023!
+
+cookie:
+  expiry_days: 30
+  key: JHSF&%/&S$& 
+  name: token
+preauthorized:
+  emails:
+  - joseluis.zaballa@student.ie.edu
