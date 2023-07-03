@@ -13,7 +13,16 @@ import base64
 import numpy as np
 import re
 import folium
-from ipyleaflet import Map, Marker
+import tempfile
+from geopy.geocoders import GoogleV3
+
+
+# Import API key from environment
+# API_KEY = os.environ.get("api_key")
+# In case you use it locally, you can use the following line
+API_KEY = 'YOUR_API_KEY'
+
+# from ipyleaflet import Map, Marker
 
 # Defining credentials
 with open('config.yaml') as file:
@@ -47,7 +56,7 @@ if authentication_status:
         orientation = "horizontal"
     )
 
-
+    # Display the Clean Data menu
     if menu == "Clean Data":
 
         #Function to make the transformtions in the CSV (here goes our cleaning and code)
@@ -79,8 +88,17 @@ if authentication_status:
                 "PLAZAPLAZA": "PLAZA"
             }
 
+            # Create a temporary file
+            temp_file = tempfile.NamedTemporaryFile(delete=False)
+
+            # Write the contents of the uploaded file to the temporary file
+            temp_file.write(input_file.read())
+
+            # Close the temporary file
+            temp_file.close()
+
             # Opening and performing alterations
-            with open(input_file.name, encoding='utf-8') as file:
+            with open(temp_file.name, encoding='utf-8') as file:
                 for line in file:
                     line = line.upper()
                     for key, value in replacements.items():
@@ -96,13 +114,13 @@ if authentication_status:
             # Create the column names
             ad_orig.columns = ["ADDRESSES", "NEIGHBORHOOD", "PROVINCE"]
 
-            # Save it as CSV
-            ad_orig.to_csv('Add_nosc_csv.csv', index=False, header=True, encoding='utf-8')
-            df = pd.read_csv('Add_nosc_csv.csv')
+            df = ad_orig
 
-
-            # ESTA SI
             def type_street(add):
+                """
+                This function is used to create a new column with the type of street
+                in case CALLE or AVENIDA is present in the address
+                """
                 prefixes = ['CALLE', 'AVENIDA']#, 'CARRETERA']
                 # print(type(add))
                 for p in prefixes:
@@ -113,6 +131,10 @@ if authentication_status:
                 return ""
 
             def remove_prefix(add):
+                """ 
+                This function is to remove the prefixes from the address
+                in case they are present
+                """
                 prefixes = ['CALLE', 'AVENIDA']#, 'CARRETERA']
                 # print(type(add))
                 for p in prefixes:
@@ -124,7 +146,7 @@ if authentication_status:
 
 
 
-            # Create a new column 'Type' based on the prefixes
+            # Create a new column 'Type of street' based on the prefixes
             df['TYPE_OF_STREET'] = df['ADDRESSES'].apply(type_street)
 
             # Remove the prefixes from the original 'Street' column
@@ -134,11 +156,15 @@ if authentication_status:
             type_column = df.pop('TYPE_OF_STREET')
             df.insert(0, 'TYPE_OF_STREET', type_column)
 
-            #drop first line that is useless
+            #drop first line that is empty (is the header of the csv)
             df = df.drop(df.index[0])
 
             # Function to rearrange the neighborhood names
             def rearrange_name(name):
+                """
+                This function is to rearrange the neighborhood names.
+                Ex: 'MANGA DEL MAR, LA' -> 'LA MANGA DEL MAR'
+                """
                 if isinstance(name, str) and ',' in name:
                     # Split the name into two parts around the comma
                     parts = name.split(',')
@@ -151,13 +177,8 @@ if authentication_status:
             # Apply the function to the 'NEIGBORHOOD' column
             df['NEIGHBORHOOD'] = df['NEIGHBORHOOD'].apply(rearrange_name)
 
-            # check if there are any numbers mixed up and fill neighborhood with empty strings
-
-            # Fill NaN values in 'NEIGHBORHOOD' with an empty string
+            # Fill NaN values in 'NEIGHBORHOOD' with an empty string in case there are any
             df['NEIGHBORHOOD'] = df['NEIGHBORHOOD'].fillna('')
-
-            # Filter rows where 'NEIGHBORHOOD' starts with a number
-            df_number_start = df[df['NEIGHBORHOOD'].str.startswith(tuple('0123456789'))]
 
             # Change column names
             df.columns = ['type_of_street','addresses', 'neighborhood', 'province']
@@ -174,14 +195,13 @@ if authentication_status:
             # Drop rows where 'addresses' column is NaN
             df.dropna(subset=['addresses'], inplace=True)
 
-            # Replace 'NO ENCONTRADA' with np.nan
-            df.replace('no encontrada', np.nan, inplace=True)
-
-            # Define a regular expression pattern to extract numbers preceded by a letter
-            pattern = r'(\D)(\d+)'
-
-            # Function to add a space between the last letter and the number
             def add_space_between_letter_and_number(address):
+                """
+                This function adds a space between the last letter and the number
+                """
+                # Define a regular expression pattern to extract numbers preceded by a letter
+                pattern = r'(\D)(\d+)'
+
                 if isinstance(address, str):  # Check if the value is a string
                     address = re.sub(pattern, r'\1 \2', address)
                 return address
@@ -189,23 +209,49 @@ if authentication_status:
             # Apply the function to the 'addresses' column and update the values
             df['addresses'] = df['addresses'].apply(add_space_between_letter_and_number)
 
-            # Define a regular expression pattern to detect a number followed by a letter without a space
-            pattern = r'(\d+)(\D)'
-
-            # Function to add a space between the number and the following non-digit character
             def add_space_between_number_and_letter(address):
+                """ 
+                This function adds a space between the number and the following non-digit character
+                """
+                # Define a regular expression pattern to detect a number followed by a letter without a space
+                pattern = r'(\d+)(\D)'
+                
                 if isinstance(address, str):  # Check if the value is a string
                     address = re.sub(pattern, r'\1 \2', address)
                 return address
 
-            # Assume 'df' is your DataFrame and 'address' is your address column
+            # Apply the function to add a space between the number and the following non-digit character
             df['addresses'] = df['addresses'].apply(add_space_between_number_and_letter)
 
-            # Define a regular expression pattern to extract the street number, street, and floor
-            pattern = r'\b(\d+)\s+(\S+)\s*(.*)'
+            # Detect "Urbanizacion" wrong spelled and replace it
+            def check_urb(address):
+                if 'urbanizaci' in address and 'urbanizacion' not in address:
+                    address = address.replace('urbanizaci', 'urbanizacion ')
+                elif 'urbaniz' in address and 'urbanizacion' not in address:
+                    address = address.replace('urbaniz', 'urbanizacion ')
+                elif 'urb' in address and 'urbanizacion' not in address:
+                    address = address.replace('urb', 'urbanizacion ')
+                if 'apartamentoapartamento' in address:
+                    address = address.replace('apartamentoapartamento', 'apartamento ')
+                if 'plaza' in address and 'plaza ' not in address:
+                    address = address.replace('plaza', 'plaza ')
+                if 'duplex' in address and 'duplex ' not in address:
+                    address = address.replace('duplex', 'duplex ')
+                if 'parcelafosforo' in address:
+                    address = address.replace('parcelafosforo, esquina con ', '')
 
-            # Function to extract the street, street number, and floor from the address
+                return address
+
+            # Apply the check_urb function to the 'addresses' column
+            df['addresses'] = df['addresses'].apply(lambda x: check_urb(x))
+
             def extract_address_components(address):
+                """
+                This function extracts the street, street number, and floor from the address
+                """
+                # Define a regular expression pattern to extract the street number, street, and floor
+                pattern = r'\b(\d+)\s+(\S+)\s*(.*)'
+
                 if isinstance(address, str):  # Check if the value is a string
                     match = re.search(pattern, address)
                     if match:
@@ -219,13 +265,13 @@ if authentication_status:
 
             # Apply the function to the 'address' column and create new columns 'street', 'street_number', and 'floor'
             df[['street_number', 'floor']] = df['addresses'].apply(extract_address_components).apply(pd.Series)
-            # df[['street', 'street_number', 'floor']] = df['addresses'].apply(extract_address_components).apply(pd.Series)
 
-            # Define a regular expression pattern to extract the street number
-            pattern = r'\b(\d+)(?:\s|$)'
-
-            # Function to extract the street number from the address
             def extract_street_number(address):
+                """  
+                This function extracts the street number from the address
+                """
+                # Define a regular expression pattern to extract the street number
+                pattern = r'\b(\d+)(?:\s|$)'
                 if isinstance(address, str):  # Check if the value is a string
                     match = re.search(pattern, address)
                     if match:
@@ -235,11 +281,14 @@ if authentication_status:
             # Apply the function to the 'address' column and create a new column 'street_number'
             df['street_number'] = df['addresses'].apply(extract_street_number)
 
-            # Define a regular expression pattern to extract the street number
-            pattern = r'\b(\d+)\b'
-
             # Function to extract the street number from the address
             def extract_street_number2(address):
+                """ 
+                This function extracts the street number from the address with a different pattern.
+                """
+                
+                # Define a regular expression pattern to extract the street number
+                pattern = r'\b(\d+)\b'
                 if isinstance(address, str):  # Check if the value is a string
                     matches = re.findall(pattern, address)
                     if matches:
@@ -247,17 +296,28 @@ if authentication_status:
                 return ''
 
             # Apply the function to the 'address' column and create a new column 'street_number'
-            # df['street_number'] = df['addresses'].apply(extract_street_number)
             df['street_number'] = df.apply(lambda row: extract_street_number2(row['addresses']) if row['street_number'] == '' else row['street_number'], axis=1)
+
+            def check_st_num(st_num):
+                """ 
+                This function is to check if the street number is a valid number and correct it if it is not.
+                Ex: 4242 -> 42
+                """
+                if len(st_num) >= 4:
+                    n = len(st_num) // 2
+                    return st_num[:n]
+                return st_num
+
+            # Apply the check_st_num function to the 'street_number' column    
+            df['street_number'] = df['street_number'].apply(lambda x: check_st_num(x))
 
             # Convert all addresses to string type
             df['addresses'] = df['addresses'].astype(str)
 
-            # Assuming df is your DataFrame and 'addresses' is the column with the full address
-            df['street_name'] = df['addresses'].apply(lambda x: ' '.join(re.findall(r'[^\d]+', x.split(',')[0])).strip())
-            # df['house_number'] = df['addresses'].apply(lambda x: ' '.join(re.findall(r'\d+', x.split(',')[0])).strip())
+            # Extract the street name from the address
+            # df['street_name'] = df['addresses'].apply(lambda x: ' '.join(re.findall(r'[^\d]+', x.split(',')[0])).strip())
 
-            # Assuming that floor number is represented as 'nd'
+            # Check floor_numbers
             df['floor_number'] = df['addresses'].apply(lambda x: re.findall(r'(\d+\s*nd)', x))
             df['floor_number'] = df['floor_number'].apply(lambda x: x[0] if x else '')
 
@@ -281,29 +341,239 @@ if authentication_status:
             df['street_name2'] = df['addresses'].apply(extract_street_name)
 
             def remove_numbers(address):
+                """ 
+                This function removes all numbers from the address.
+                """
                 address_without_numbers = re.sub(r'N°|\b\d+\b', '', address)
                 return address_without_numbers.strip()
+
+            # Remove numbers from the 'street_name' column
             df['street_name2'] = df['street_name2'].apply(lambda x: remove_numbers(x))
 
             def remove_nnd(address):
+                """ 
+                This function removes nnd from the address.
+                """
                 address_without_nnd = re.sub(r' nnd$| nnd ', '', address, flags=re.IGNORECASE)
                 return address_without_nnd.strip()
 
+            # Remove nnd from the 'street_name' and 'floor' column
             df['street_name2'] = df['street_name2'].apply(lambda x: remove_nnd(x))
+            df['floor'] = df['floor'].apply(lambda x: remove_nnd(x))
 
             def remove_nd(address):
+                """ 
+                This function removes nd from the address.
+                """
                 address_without_nnd = re.sub(r' nd$| nd ', '', address, flags=re.IGNORECASE)
                 return address_without_nnd.strip()
 
+            # Remove nd from the 'street_name' and 'floor' column
             df['street_name2'] = df['street_name2'].apply(lambda x: remove_nd(x))
+            df['floor'] = df['floor'].apply(lambda x: remove_nd(x))
+
 
             def remove_parentheses(address):
+                """ 
+                This function removes parentheses from the address.
+                And remove the content inside the parentheses.
+                """
                 address_without_parentheses = re.sub(r'\((.*)\)', '', address)
                 return address_without_parentheses.strip()
 
+            # Remove parentheses from the 'street_name' column
             df['street_name2'] = df['street_name2'].apply(lambda x: remove_parentheses(x))
 
+
             return df
+        
+        def call_api(df):
+
+            # Start working on the dataframe to be able to send it to the API
+            # Prepare the data 
+            df['prov'] = df.apply(lambda x: "Region de Murcia" if x['province'] == "murcia" else x['province'], axis=1)
+            df['type_of_street'] = df['type_of_street'].apply(lambda x: x if pd.notnull(x) else '')
+            df['street_number'] = df['street_number'].apply(lambda x: int(x) if pd.notnull(x) else '')
+            df['prov'] = df['prov'].astype(str)
+
+            # Format the full address to send to the API
+            df['full'] = df['type_of_street'] + ' ' + df['street_name2'] + ', ' + df['street_number'].astype(str) + ', ' + df['prov'] + ', España'
+
+            # Start with the API part
+            # Let's start with Google Places API
+
+            # Your Google API Key. It is stored in an environment variable passed
+            # to the program as an argument. This is to avoid exposing the key.
+            
+
+            def validate_address(address):
+                """
+                Validate an address using Google Places API. 
+                """
+                try:
+                    # Prepare the API request
+                    url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json'
+                    params = {
+                        'input': address,
+                        'key': API_KEY
+                    }
+
+                    # Send the request
+                    response = requests.get(url, params=params)
+
+                    # Parse the response
+                    data = response.json()
+                    if data['status'] == 'OK':
+                        # Return the first autocomplete prediction if available
+                        if len(data['predictions']) > 0:
+                            # print(data['predictions'][0]['description'])
+                            return data['predictions'][0]['description']
+                        else:
+                            return None
+                    else:
+                        return None
+
+                except Exception as e:
+                    print("Didn't Work: ", e)
+                    return None
+
+            # Apply the function to the dataframe
+            df['FORMATED_ADDRESS'] = df.apply(lambda x: validate_address(x['full']), axis=1)
+
+            # Now we already have a Formated Address column, but we need to get the coordinates
+            # Let's start with Google Geocoding API
+
+            # Create the Geolocator
+            geolocator2 = GoogleV3(api_key=API_KEY)
+
+            def extract_clean_address(row):
+                """
+                This function calls the API, gets all the data, separates it into columns and returns it.
+                """
+
+                address = row['FORMATED_ADDRESS']
+                
+                try:
+                    location = geolocator2.geocode(address)
+                    data = location.raw
+                    type_street = ''
+                    neighborhood = ''
+                    street = ''
+                    locality = ''
+                    province = ''
+                    region = ''
+                    country = ''
+                    postal_code = ''
+                    streetnumber = ''
+                    lat = ''
+                    long = ''
+
+                    for row in data['address_components']:
+                        if row['types'] == ['route']:
+                            street_parts = row['long_name'].split(' ', 1) # This splits the string at the first space
+                            if len(street_parts) > 1 and street_parts[0] in ['Calle', 'Avenida']:
+                                type_street = street_parts[0] # This is 'Calle', 'Avenida', etc.
+                                street = street_parts[1] # This is the rest of the string
+                            else:
+                                street = row['long_name'] # If there was 
+                            # street = row['long_name']
+                            # print(street)
+                        elif row['types'] == ['locality', 'political']:
+                            locality = row['long_name']
+                            # print(locality)
+                        elif row['types'] == ['administrative_area_level_2', 'political']:
+                            province = row['long_name']
+                            # print(province)
+                        elif row['types'] == ['administrative_area_level_1', 'political']:
+                            region = row['long_name']
+                            # print(region)
+                        elif row['types'] == ['country', 'political']:
+                            country = row['long_name']
+                            # print(country)
+                        elif row['types'] == ['postal_code']:
+                            postal_code = row['long_name']
+                            # print(postal_code)
+                        elif row['types'] == ['street_number']:
+                            streetnumber = row['long_name']
+                            # print(streetnumber)
+                        elif row['types'] == ['neighborhood', 'political']:
+                            neighborhood = row['long_name']
+                            # print(neighborhood)
+                    try:
+                        lat = data['geometry']['location']['lat']
+                        long = data['geometry']['location']['lng']
+                    except:
+                        pass
+                    
+                    return pd.Series((type_street, street, streetnumber, locality, province, region, country, postal_code, neighborhood, lat, long))
+                except:
+                    print("Didn't Work")
+                    return pd.Series((None, None, None, None, None, None, None, None, None, None, None))
+
+
+
+            # Apply the extract_clean_address function to 'clean address' column and assign it back to the column
+            df[['TYPE_STREET','STREET_NAME', 'STREET_NUMBER', \
+                'LOCALITY', 'PROVINCE', 'REGION', 'COUNTRY', 'POSTAL_CODE',\
+                'NEIGHBOURHOOD', 'LAT', 'LONG']] = df.apply(extract_clean_address, axis=1)
+
+
+            # As we have a lot of urbanizaciones and are having problems with it, we will make it easier to read
+            def clean_urba(row):
+                """
+                This adds the urbanization name to the neighbourhood column
+                in case it exists.
+                """
+                if 'urbaniz' in str(row['FORMATED_ADDRESS']).lower() or 'aldeas' in str(row['FORMATED_ADDRESS']).lower():
+                    neigh = row['FORMATED_ADDRESS'].split(',')[0]
+                    return neigh
+                return ''
+
+            # Apply the clean_urba function
+            df['NEIGHBOURHOOD'] = df.apply(clean_urba, axis=1)
+
+            # Add the OBSERVATIONS column with extra data not included in the API.
+            df['OBSERVATIONS'] = df['floor'].apply(lambda x: x if pd.notna(x) else '')
+
+            # Function to add floor and street number if urbanization
+            def add_observ_urba(row):
+                """
+                This function adds the floor and street number to the 
+                observations column if the address is an urbanization.
+                """
+                if 'urbaniz' in str(row['NEIGHBOURHOOD']).lower() or 'aldeas' in str(row['NEIGHBOURHOOD']).lower():
+                    number = str(row['street_number']).split('.')[0]
+                    # number = int(number)
+                    return  number + ' ' + str(row['floor'])
+                
+                return row['OBSERVATIONS']
+
+            # Add observations    
+            df['OBSERVATIONS'] = df.apply(add_observ_urba, axis=1)
+
+            # Take the nan out in observations
+            df['OBSERVATIONS'] = df['OBSERVATIONS'].apply(lambda x: x.replace('nan', '') if 'nan' in x else x)
+
+            # Add street number if it's not automatically added
+            def add_street_number(row):
+                """"
+                This function adds the street number in case it was not added before
+                """
+                
+                if str(row['STREET_NUMBER']) == 'nan' or str(row['STREET_NUMBER']) == '':
+                    number = row['street_number']
+                    return number
+                else:
+                    return row['STREET_NUMBER']
+
+            df['STREET_NUMBER'] = df.apply(add_street_number, axis=1)
+
+            # Create a clean dataframe with only the columns we want
+            clean_df = df[['FORMATED_ADDRESS', 'TYPE_STREET', 'STREET_NAME', 'STREET_NUMBER', \
+                        'LOCALITY', 'PROVINCE', 'REGION', 'COUNTRY', 'POSTAL_CODE', 'NEIGHBOURHOOD',\
+                            'OBSERVATIONS', 'LAT', 'LONG']].copy()
+            
+            return df, clean_df
         
 
         # Function to download the file
@@ -317,10 +587,14 @@ if authentication_status:
         # STREAMLIT - File upload section
         st.header("Upload CSV File")
         uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+        
+        st.write(uploaded_file.name)
 
         if uploaded_file is not None:
             # Perform CSV transformation
             df = transform_csv(uploaded_file)
+
+            df, clean_df = call_api(df)
 
             # Show transformed data
             st.header("Transformed Data")
