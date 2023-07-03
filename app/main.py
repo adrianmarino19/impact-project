@@ -20,7 +20,7 @@ from geopy.geocoders import GoogleV3
 # Import API key from environment
 # API_KEY = os.environ.get("api_key")
 # In case you use it locally, you can use the following line
-API_KEY = 'YOUR_API_KEY'
+API_KEY = ""
 
 # from ipyleaflet import Map, Marker
 
@@ -588,7 +588,6 @@ if authentication_status:
         st.header("Upload CSV File")
         uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
         
-        st.write(uploaded_file.name)
 
         if uploaded_file is not None:
             # Perform CSV transformation
@@ -597,18 +596,20 @@ if authentication_status:
             df, clean_df = call_api(df)
 
             # Show transformed data
-            st.header("Transformed Data")
-            st.write(df)
+            # st.header("Transformed Data")
+            # st.write(df)
 
             # Download link for the transformed CSV file
+            st.write("Clean Data")
+            st.write(clean_df)
             st.header("Download Transformed CSV")
-            csv_download_link = get_csv_download_link(df)
+            csv_download_link = get_csv_download_link(clean_df)
             st.markdown(csv_download_link, unsafe_allow_html=True)
     
         # Button to save clean addresses
         if st.button("Save clean addresses"):
             # Connect to the database and store the clean addresses
-            api_url = "https://api.example.com/save_clean_addresses"
+            api_url = ""
             response = requests.post(api_url, json=df.to_dict(orient="records"))
 
             if response.status_code == 200:
