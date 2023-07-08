@@ -1,3 +1,7 @@
+<p align="center">
+ <img src="https://github.com/FedeYK/ImpactProject/blob/main/app/olin_group.png" title="Dashboard Example" style="background-color: white" width="200" height="200">
+</p>
+
 # Impact Project - Olin Group Dashboard
 
 This project is a data transformation and visualization application for address data, using Python, Streamlit, pandas and other tools. It provides functions for cleaning address data, validating and saving new addresses, and visualizing the locations of addresses on an interactive map.
