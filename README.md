@@ -13,7 +13,7 @@ This project is a data transformation and visualization application for address 
 * [Setup & Installation](#set)
   * [Installation](#ins)
 * [Deployment on Cloud](#dep)
-  * [Google Maps API Key](#api)
+  * [Google Maps API Key](#key)
   * [Steps to Deploy](#step)
 
 
@@ -111,24 +111,6 @@ $ streamlit run app.py
 ```
 5. Open your browser and go to http://localhost:8501.
 
-**Clean Data Tab**
-
-1. Upload a CSV file with the address data.
-2. Click on 'Validate Address' to validate and clean the data.
-3. Click on 'Save Address' to save the cleaned data.
-4. Click on 'Download Transformed CSV' to download the cleaned data in CSV format.
-
-**New Address Tab**
-
-1. Fill out the form with the details of the new address.
-2. Click on 'Validate Address' to validate the address.
-3. Click on 'Save Address' to save the new address.
-
-**Navigation Tab**
-
-1. Use the filters in the sidebar to filter the addresses by province and zip code.
-2. View the filtered addresses on the interactive map.
-3. View a detailed report of the filtered addresses below the map.
 
 ## <a name='dep'></a>**Deployment on Cloud**
 
