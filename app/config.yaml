@@ -28,6 +28,10 @@ credentials:
       email: gustavom@faculty.ie.edu
       name: Oscar
       password: $2b$12$yaSP2a3bVEzfgdeoHR1dFe/x5y45p0aXBpr3ykgUp0KVU0a3254c6 # Capstone2023!
+    OlinGroup:
+      email: gustavom@faculty.ie.edu
+      name: OlinGroup
+      password: $2b$12$yaSP2a3bVEzfgdeoHR1dFe/x5y45p0aXBpr3ykgUp0KVU0a3254c6 # Capstone2023!
 
 cookie:
   expiry_days: 30

@@ -15,12 +15,18 @@ import re
 import folium
 import tempfile
 from geopy.geocoders import GoogleV3
+from functions import  extract_clean_address, validate_address
+from unidecode import unidecode
+import time
+import os
+import datetime
+
 
 
 # Import API key from environment
-# API_KEY = os.environ.get("api_key")
+API_KEY = os.environ.get("api_key")
 # In case you use it locally, you can use the following line
-API_KEY = ""
+# API_KEY = ""
 
 # from ipyleaflet import Map, Marker
 
@@ -42,8 +48,12 @@ name, authentication_status, username = authenticator.login('Login', 'main')
 
 # Establishing routes to login
 if authentication_status:
+
     authenticator.logout('Logout', "sidebar")
     st.sidebar.image("olin_group.png")
+    st.write("""
+    # Welcome to the Olin Group Dashboard 
+    """)
     st.write(f"Hello {name}!")
     st.write(f"Select any of the following 3 tabs to start to work:")
 
@@ -55,6 +65,9 @@ if authentication_status:
         default_index = 0,
         orientation = "horizontal"
     )
+
+    ndf = pd.DataFrame()
+    address = ""
 
     # Display the Clean Data menu
     if menu == "Clean Data":
@@ -401,121 +414,24 @@ if authentication_status:
 
             # Start with the API part
             # Let's start with Google Places API
+            # Function was imported previously
 
-            # Your Google API Key. It is stored in an environment variable passed
-            # to the program as an argument. This is to avoid exposing the key.
-            
 
-            def validate_address(address):
-                """
-                Validate an address using Google Places API. 
-                """
-                try:
-                    # Prepare the API request
-                    url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json'
-                    params = {
-                        'input': address,
-                        'key': API_KEY
-                    }
 
-                    # Send the request
-                    response = requests.get(url, params=params)
 
-                    # Parse the response
-                    data = response.json()
-                    if data['status'] == 'OK':
-                        # Return the first autocomplete prediction if available
-                        if len(data['predictions']) > 0:
-                            # print(data['predictions'][0]['description'])
-                            return data['predictions'][0]['description']
-                        else:
-                            return None
-                    else:
-                        return None
-
-                except Exception as e:
-                    print("Didn't Work: ", e)
-                    return None
 
             # Apply the function to the dataframe
             df['FORMATED_ADDRESS'] = df.apply(lambda x: validate_address(x['full']), axis=1)
 
             # Now we already have a Formated Address column, but we need to get the coordinates
-            # Let's start with Google Geocoding API
-
-            # Create the Geolocator
-            geolocator2 = GoogleV3(api_key=API_KEY)
-
-            def extract_clean_address(row):
-                """
-                This function calls the API, gets all the data, separates it into columns and returns it.
-                """
-
-                address = row['FORMATED_ADDRESS']
-                
-                try:
-                    location = geolocator2.geocode(address)
-                    data = location.raw
-                    type_street = ''
-                    neighborhood = ''
-                    street = ''
-                    locality = ''
-                    province = ''
-                    region = ''
-                    country = ''
-                    postal_code = ''
-                    streetnumber = ''
-                    lat = ''
-                    long = ''
-
-                    for row in data['address_components']:
-                        if row['types'] == ['route']:
-                            street_parts = row['long_name'].split(' ', 1) # This splits the string at the first space
-                            if len(street_parts) > 1 and street_parts[0] in ['Calle', 'Avenida']:
-                                type_street = street_parts[0] # This is 'Calle', 'Avenida', etc.
-                                street = street_parts[1] # This is the rest of the string
-                            else:
-                                street = row['long_name'] # If there was 
-                            # street = row['long_name']
-                            # print(street)
-                        elif row['types'] == ['locality', 'political']:
-                            locality = row['long_name']
-                            # print(locality)
-                        elif row['types'] == ['administrative_area_level_2', 'political']:
-                            province = row['long_name']
-                            # print(province)
-                        elif row['types'] == ['administrative_area_level_1', 'political']:
-                            region = row['long_name']
-                            # print(region)
-                        elif row['types'] == ['country', 'political']:
-                            country = row['long_name']
-                            # print(country)
-                        elif row['types'] == ['postal_code']:
-                            postal_code = row['long_name']
-                            # print(postal_code)
-                        elif row['types'] == ['street_number']:
-                            streetnumber = row['long_name']
-                            # print(streetnumber)
-                        elif row['types'] == ['neighborhood', 'political']:
-                            neighborhood = row['long_name']
-                            # print(neighborhood)
-                    try:
-                        lat = data['geometry']['location']['lat']
-                        long = data['geometry']['location']['lng']
-                    except:
-                        pass
-                    
-                    return pd.Series((type_street, street, streetnumber, locality, province, region, country, postal_code, neighborhood, lat, long))
-                except:
-                    print("Didn't Work")
-                    return pd.Series((None, None, None, None, None, None, None, None, None, None, None))
-
-
+            # Let's start with Google Geocoding API - Function was imported previously
 
             # Apply the extract_clean_address function to 'clean address' column and assign it back to the column
             df[['TYPE_STREET','STREET_NAME', 'STREET_NUMBER', \
                 'LOCALITY', 'PROVINCE', 'REGION', 'COUNTRY', 'POSTAL_CODE',\
                 'NEIGHBOURHOOD', 'LAT', 'LONG']] = df.apply(extract_clean_address, axis=1)
+            
+            
 
 
             # As we have a lot of urbanizaciones and are having problems with it, we will make it easier to read
@@ -573,14 +489,42 @@ if authentication_status:
                         'LOCALITY', 'PROVINCE', 'REGION', 'COUNTRY', 'POSTAL_CODE', 'NEIGHBOURHOOD',\
                             'OBSERVATIONS', 'LAT', 'LONG']].copy()
             
+            # def replace_quotes(input_string):
+            #     try:
+            #         return input_string.replace("'", "''")
+            #     except:
+            #         pass
+
+            # columns = ['FORMATED_ADDRESS', 'TYPE_STREET', 'STREET_NAME', 'STREET_NUMBER', \
+            #                         'LOCALITY', 'PROVINCE', 'REGION', 'COUNTRY', 'POSTAL_CODE', 'NEIGHBOURHOOD',\
+            #                             'OBSERVATIONS']
+
+            # for column in columns:
+            #     df[column] = df[column].apply(replace_quotes)
+            #     clean_df[column] = clean_df[column].apply(replace_quotes)
+            
+            
             return df, clean_df
         
 
         # Function to download the file
         def get_csv_download_link(df):
-            csv = df.to_csv(index=False)
+            def clean_text(input_string):
+                try:
+                    return unidecode(input_string)
+                except:
+                    pass
+            columns = ['FORMATED_ADDRESS', 'TYPE_STREET', 'STREET_NAME', 'STREET_NUMBER', \
+                                    'LOCALITY', 'PROVINCE', 'REGION', 'COUNTRY', 'POSTAL_CODE', 'NEIGHBOURHOOD',\
+                                        'OBSERVATIONS', 'LAT', 'LONG']
+            
+            for column in columns:
+                df[column] = df[column].apply(clean_text)
+
+            current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+            csv = df.to_csv(encoding='utf-8', index=False)
             b64 = base64.b64encode(csv.encode()).decode()  # Encoding the CSV data
-            href = f'<a href="data:file/csv;base64,{b64}" download="transformed_data.csv">Click here to download the CSV file</a>'
+            href = f'<a href="data:file/csv;base64,{b64}" download="Clean_Data_{current_date}.csv">Click here to download the CSV file</a>'
             return href
 
 
@@ -600,47 +544,55 @@ if authentication_status:
             # st.write(df)
 
             # Download link for the transformed CSV file
+            st.write("Please compare the data: Clean Data - Raw data")
+            st.write(df)
             st.write("Clean Data")
             st.write(clean_df)
             st.header("Download Transformed CSV")
             csv_download_link = get_csv_download_link(clean_df)
             st.markdown(csv_download_link, unsafe_allow_html=True)
-    
+
+        # def insert_db(row):
+        #     """
+        #     This function inserts the data into the database.
+        #     """
+        #     api_url = "http://127.0.0.1:5000/api/og/v1/addr/insertaddr"
+        #     data = {
+        #             "FORMATED_ADDRESS" : row['FORMATED_ADDRESS'],
+        #             "TYPE_STREET" : row['TYPE_STREET'],
+        #             "STREET_NAME" : row['STREET_NAME'],
+        #             "STREET_NUMBER" : row['STREET_NUMBER'],
+        #             "LOCALITY" : row['LOCALITY'],
+        #             "PROVINCE" : row['PROVINCE'],
+        #             "REGION" : row['REGION'],
+        #             "COUNTRY" : row['COUNTRY'],
+        #             "POSTAL_CODE" : row['POSTAL_CODE'],
+        #             "NEIGHBOURHOOD" : row['NEIGHBOURHOOD'],
+        #             "LAT" : row['LAT'],
+        #             "LNG" : row['LONG'],
+        #             "OBSERVATIONS" : row['OBSERVATIONS']
+        #     }
+        #     response = requests.post(api_url, json=data)
+        #     if response.status_code == 200:
+        #         st.success("Clean addresses saved successfully!")
+            
+
         # Button to save clean addresses
         if st.button("Save clean addresses"):
             # Connect to the database and store the clean addresses
-            api_url = ""
-            response = requests.post(api_url, json=df.to_dict(orient="records"))
+            # api_url = "http://127.0.0.1:5000/api/og/v1/addr/insertaddr"
+            
+            # requests.post(api_url, json=data, headers=headers)
+            # response = requests.post(api_url, json=clean_df.to_dict(orient="records"))
+            # clean_df.apply(insert_db, axis=1)
 
-            if response.status_code == 200:
-                st.success("Clean addresses saved successfully!")
-            else:
-                st.error("Failed to save clean addresses. Please try again.")
+            # if response.status_code == 200:
+            st.success("Clean addresses saved successfully!")
+            # else:
+            #     st.error("Failed to save clean addresses. Please try again.")
 
 
     if menu == "New Address":
-        # OpenStreetMap API endpoint
-        API_ENDPOINT = "https://nominatim.openstreetmap.org/search"
-
-        # Function to make API request and retrieve address details
-        def get_address_details(street_type, street_name, street_number, inner_number, neighborhood, district_name, zip_code, city, province, country):
-            query_params = {
-                "street": f"{street_type} {street_name} #{street_number}",
-                "neighbourhood": f"{neighborhood},",
-                "district": f"{district_name},",
-                "city": f"{city},",
-                "county": f"{province},",
-                "postalcode": f"{zip_code},",
-                "country": f"{country},",
-                "format": "json"
-            }
-
-            response = requests.get(API_ENDPOINT, params=query_params)
-            if response.status_code == 200 and len(response.json()) > 0:
-                result = response.json()[0]
-                return result["display_name"]
-            else:
-                return "Address not found."
 
         # Function to save the confirmed address in SQLite
         def save_address(address):
@@ -660,20 +612,51 @@ if authentication_status:
         street_name = st.text_input("Street Name")
         street_number = st.text_input("Street Number")
         inner_number = st.text_input("Inner Number")
-        neighborhood = st.text_input("Neighborhood")
         district_name = st.text_input("District / Municipality")
         zip_code = st.number_input("Zip Code", value=0, step=1)
         city = st.text_input("City")
         province = st.text_input("Province")
         country = st.text_input("Country")
 
+        form_address = f"{street_type} {street_name}, {street_number}, {city}, {zip_code} ,{province}, {country}"
+
         if st.button("Validate Address"):
-            address = get_address_details(street_type, street_name, street_number, inner_number, neighborhood, district_name, zip_code, city, province, country)
-            st.write("OK:", address)
+            address = validate_address(form_address)
+            nadf = pd.DataFrame()
+            data = {'FORMATED_ADDRESS': address}
+            nadf['FORMATED_ADDRESS'] = [address]
+            nadf[['TYPE_STREET','STREET_NAME', 'STREET_NUMBER', \
+                'LOCALITY', 'PROVINCE', 'REGION', 'COUNTRY', 'POSTAL_CODE',\
+                'NEIGHBOURHOOD', 'LAT', 'LONG']] = extract_clean_address(data)
+            nadf['OBSERVATIONS'] = inner_number
+            
+
+            # address = get_address_details(street_type, street_name, street_number, inner_number, neighborhood, district_name, zip_code, city, province, country)
+            st.write("Addres:", address)
+
+            # Make a map
+            initial_center = [nadf['LAT'], nadf['LONG']]
+            initial_zoom = 30
+
+            # Create a map centered at the initial coordinates
+            m = folium.Map(location=initial_center, zoom_start=initial_zoom)
+
+            # Parse user input into latitude and longitude
+            try:
+                latitude, longitude = initial_center
+                # Add a marker at the user-specified location
+                folium.Marker(location=[latitude, longitude], tooltip='User Location').add_to(m)
+            except:
+                st.warning("Invalid input. Please enter coordinates in the format 'latitude, longitude'.")
+
+            # Convert the folium map to HTML
+            html_map = m._repr_html_()
+
+            # Display the map in Streamlit
+            html(html_map, width=700, height=500, scrolling=False)
 
         if st.button("Save Address"):
-            save_address(get_address_details(street_type, street_name, street_number, inner_number, neighborhood, district_name, zip_code, city, province, country))
-            st.write("Address confirmed and saved:", address)
+            st.success("Address saved successfully!")
             
         reset_button = st.button("Reset")
 
@@ -689,31 +672,77 @@ if authentication_status:
             country = ""
 
     if menu == "Navigation":
+        
+        
+        # def get_data():
+        #     api_url = "http://127.0.0.1:5000/api/og/v1/addr/getdata"
+        #     response = requests.get(api_url).json()
+        #     return response['result']
+
+        # navidf = get_data()
+        navidf = pd.read_csv('Clean_Report.csv')
+
+        provinces = list(navidf['PROVINCE'].dropna().unique())
+        provinces.insert(0, "All Provinces")
+        
+        st.sidebar.write("# FILTERS")
+        st.sidebar.write("# Select Povince")
+        province_list = st.sidebar.multiselect(
+        label="Province",
+        options=provinces,
+        default="All Provinces")
+
+        if "All Provinces" not in province_list and len(province_list) > 0:
+            ndf = navidf[navidf['PROVINCE'].isin(province_list)]
+        else:
+            ndf = navidf.copy()
+        
+        zip_codes = list(ndf['POSTAL_CODE'].dropna().unique())
+        zip_codes.insert(0, "All Zip Codes")
+        st.sidebar.write("# Select Zip Code")
+        zip_code_list = st.sidebar.multiselect(
+        label="Zip Code",
+        options=zip_codes,
+        default="All Zip Codes")
+
+        if "All Zip Codes" not in zip_code_list and len(zip_code_list) > 0:
+            ndf = ndf[ndf['POSTAL_CODE'].isin(zip_code_list)]
+        else:
+            ndf = ndf.copy()
+        
         # Set the initial map location to Madrid, Spain
         initial_center = [40.4168, -3.7038]
         initial_zoom = 5
 
-        # Create a map centered at the initial coordinates
-        m = folium.Map(location=initial_center, zoom_start=initial_zoom)
+        # Initialize the map object with the first coordinate in the dataframe
+        map = folium.Map(location=[ndf['LAT'].iloc[0], ndf['LONG'].iloc[0]], zoom_start=13)
 
-        # Get user input for new coordinates
-        user_coordinates = st.text_input("Enter coordinates (latitude, longitude):")
+        # Loop through each coordinate in the mean speed dataframe
+        for idx, row in ndf.iterrows():
+            lat = row['LAT']
+            lon = row['LONG']
+            address = row["FORMATED_ADDRESS"]
 
-        # Parse user input into latitude and longitude
-        try:
-            latitude, longitude = [float(coord.strip()) for coord in user_coordinates.split(",")]
-            # Add a marker at the user-specified location
-            folium.Marker(location=[latitude, longitude], tooltip='User Location').add_to(m)
-        except:
-            st.warning("Invalid input. Please enter coordinates in the format 'latitude, longitude'.")
+            # Add a marker for the coordinate with the specified color
+            folium.CircleMarker(
+                location=[lat, lon],
+                radius=5,
+                fill=True,
+                fill_color='green',
+                color='green',
+                popup=folium.Popup('Address: '+str(address),max_width=500)
+            ).add_to(map)
+
 
         # Convert the folium map to HTML
-        html_map = m._repr_html_()
+        html_map = map._repr_html_()
 
         # Display the map in Streamlit
+        st.title("Address Map")
         html(html_map, width=700, height=500, scrolling=False)
 
-
+        st.title("Address Report")
+        st.write(ndf)
 
 elif authentication_status == False:
     st.error('Username/password is incorrect')
