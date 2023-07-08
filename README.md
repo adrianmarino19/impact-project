@@ -1,4 +1,4 @@
-# Impact Project - Olin Group Dashboard
+<img width="535" alt="image" src="https://github.com/FedeYK/ImpactProject/assets/80294718/aaafddb7-908c-43d9-a2f1-e27435408d7f"># Impact Project - Olin Group Dashboard
 
 This project is a data transformation and visualization application for address data, using Python, Streamlit, pandas and other tools. It provides functions for cleaning address data, validating and saving new addresses, and visualizing the locations of addresses on an interactive map.
 
@@ -17,6 +17,62 @@ This project is a data transformation and visualization application for address 
 To begin with, the app is divided in three diferent sectors.
 This are: 
 
+* Clean Data
+* New Address
+* Navigation
+
+<img src="https://github.com/FedeYK/ImpactProject/blob/main/pics/1.png" title="Dashboard Example">
+
+### Clean Data
+
+In the Clean Data area, the user is able to upload a CSV file with messy addresses to be converted into well written addresses containing the geolocation data.
+
+<img src="https://github.com/FedeYK/ImpactProject/blob/main/pics/2.png" title="Upload CSV">
+
+Once the user has uploaded a CSV file, the cleaning algorithm begins. First of all, it separates the diferent characteristics of each address into different colums such as:
+
+* Type of Street
+* Street Name
+* Street Number
+* Region
+* Etc...
+
+Then it begins with the most important step of the Clean Data tab. It connects with two different Google Maps API's and request information from each one of those to get the perfect address.
+First of all, the app calls the Google Places API, and after it has the results, it injects those results into the Google Geocoding API which returns a very specific address with the geocoding information.
+The combination of this two API's have a great result in accuracy!
+
+Once that process is finished, the app will show the algorithmicaly cleaned addresses with the final status obtained from the API's.
+
+<img src="https://github.com/FedeYK/ImpactProject/blob/main/pics/3.png" title="Clean Data Example">
+
+At this precise moment, the user can decide if it wants to save the addresses into a database or download the final CSV file.
+The CSV file will be named with the actual date of the request.
+
+### New Address
+
+In the New Address area, the user can insert an address manually. The objective of this area is to improve Olin Group way of obtaining data.
+The New Address area must verify with the API's the correct spelling and format of the address.
+
+<img src="https://github.com/FedeYK/ImpactProject/blob/main/pics/4-0.png" title="New Address Form">
+
+The New Address area must verify with the API's the correct spelling and format of the address.
+Once the address inserted and verified, the full, well written address will be shown with the correct location plotted on a map.
+
+<img src="https://github.com/FedeYK/ImpactProject/blob/main/pics/4.png" title="Plotted address">
+
+### Navigation
+
+The Navigation area is the next step into Olin Group data analysis.
+
+<img src="https://github.com/FedeYK/ImpactProject/blob/main/pics/5.png" title="Plotted map">
+
+This tab will allow Olin Group to see all their clients, filter them by province and zip code to make the best marketing analysis they could ever do.
+
+<img src="https://github.com/FedeYK/ImpactProject/blob/main/pics/6.png" title="Filters">
+
+With this tool, many things such as adding the zip code medium square meter value can be done and will allow Olin Group to excell in the future.
+
+<img src="https://github.com/FedeYK/ImpactProject/blob/main/pics/7.png" title="Filters">
 
 ## Setup & Installation
 
