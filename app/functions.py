@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from geopy.geocoders import GoogleV3
 
-API_KEY = "AIzaSyCikxBls3oMC-l3pOoQDfWzI5a20KBrA1s"
+API_KEY = ""
 
 def validate_address(address):
     """
